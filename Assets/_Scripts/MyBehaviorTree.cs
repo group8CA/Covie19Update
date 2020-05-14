@@ -8,7 +8,7 @@ public class MyBehaviorTree : MonoBehaviour
 {
 	public Transform[] wander;
 	public GameObject[] agents;
-	public InteractionObject[] obj;
+    public InteractionObject can;
 	public FullBodyBipedEffector eff1;
 	public FullBodyBipedEffector eff2;
 	public FullBodyBipedEffector left;
@@ -53,20 +53,15 @@ public class MyBehaviorTree : MonoBehaviour
 
     }
 
-	protected Node PickUp(GameObject Friend, Val<InteractionObject> phone){
-		return new Sequence(
-			Friend.GetComponent<BehaviorMecanim>().Node_StartInteraction(left, phone),
-			//Friend.GetComponent<BehaviorMecanim>().Node_StartInteraction(left, obj2),
-			new LeafWait(1000),
-			Friend.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture("TALKING ON PHONE", 3000),
-            Friend.GetComponent<BehaviorMecanim>().Node_StopInteraction(left),
-			Friend.GetComponent<BehaviorMecanim>().ST_PlayGesture("POINTING", AnimationLayer.Hand, 3000)
-			
-			);
-		
-	}
-	
-	protected Node ST_ShakeHands( GameObject Friend, GameObject Wanderer, Val<Vector3> WandererPos, Val<Vector3> FriendPos, Val<InteractionObject> obj, Val<FullBodyBipedEffector> effector1, Val<FullBodyBipedEffector> effector2)
+    protected Node PickUp(GameObject p)
+    {
+        return new Sequence(
+                            p.GetComponent<BehaviorMecanim>().Node_StartInteraction(left, can),
+                            new LeafWait(1000),
+                            p.GetComponent<BehaviorMecanim>().Node_StopInteraction(left));
+    }
+
+    protected Node ST_ShakeHands( GameObject Friend, GameObject Wanderer, Val<Vector3> WandererPos, Val<Vector3> FriendPos, Val<InteractionObject> obj, Val<FullBodyBipedEffector> effector1, Val<FullBodyBipedEffector> effector2)
 
     {
 
@@ -107,12 +102,43 @@ public class MyBehaviorTree : MonoBehaviour
 	}
 	protected Node BuildTreeRoot()
 	{
+        Val<Vector3> CharPos = Val.V(() => agents[0].transform.position);
+        Val<Vector3> otherChar = Val.V(() => agents[3].transform.position);
+        Val<Vector3> random = Val.V(() => agents[4].transform.position);
+        return new Sequence(
+            this.ST_ApproachAndWait(agents[0], wander[0]),
+            agents[0].GetComponent<BehaviorMecanim>().ST_PlayGesture("ROAR", AnimationLayer.Face, 3000),
+            this.ST_ApproachAndWait(agents[0], wander[1]),
+            agents[0].GetComponent<BehaviorMecanim>().ST_PlayGesture("H_Think", AnimationLayer.Hand, 3000),
+            this.ST_ApproachAndWait(agents[0], wander[2]),
+            agents[0].GetComponent<BehaviorMecanim>().ST_PlayGesture("ROAR", AnimationLayer.Face, 3000),
+            new SequenceParallel(this.ST_ApproachAndWait(agents[0], wander[3]),
+            this.ST_ApproachAndWait(agents[3], wander[3])
+            ),
+            this.ST_ShakeHands(agents[0], agents[3], otherChar, CharPos, can, eff1, eff2),
+            //agent3 is now infected
 
-		return new Sequence(
-			this.ST_ApproachAndWait(agents[0],wander[0]),
-			//new LeafWait(10000),
-			//this.hasCorona(agents[0]),
-			this.ST_EndTree()
+            this.ST_ApproachAndWait(agents[0], wander[4]),
+
+
+            this.ST_ApproachAndWait(agents[1], wander[0]),
+            agents[1].GetComponent<BehaviorMecanim>().ST_PlayGesture("H_Yawn", AnimationLayer.Hand, 3000),
+            //at this point we want to change color of this agents t-shirt
+            //agent1 is now infected
+            this.ST_ApproachAndWait(agents[2], wander[1]),
+            agents[2].GetComponent<BehaviorMecanim>().ST_PlayGesture("ROAR", AnimationLayer.Face, 3000),
+            //agent2 is now infected
+            new SequenceParallel(this.ST_ApproachAndWait(agents[2], wander[3]),
+            this.ST_ApproachAndWait(agents[3], wander[2]),
+            this.ST_ApproachAndWait(agents[4], wander[2])),
+            agents[3].GetComponent<BehaviorMecanim>().Node_OrientTowards(otherChar),
+            agents[4].GetComponent<BehaviorMecanim>().Node_OrientTowards(random),
+            this.Converse(agents[3], agents[4]),
+            agents[4].GetComponent<BehaviorMecanim>().ST_PlayGesture("ROAR", AnimationLayer.Face, 3000),
+            this.ST_ApproachAndWait(agents[2], wander[3]),
+            //new LeafWait(10000),
+            //this.hasCorona(agents[0]),
+            this.ST_EndTree()
 			//this.Converse(agents[0],agents[1])
 		);
 	}
